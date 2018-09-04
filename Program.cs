@@ -22,6 +22,9 @@ namespace nss
             SqliteConnection db = DatabaseInterface.Connection;
             DatabaseInterface.CheckCohortTable();
             DatabaseInterface.CheckInstructorsTable();
+            DatabaseInterface.CheckExerciseTable();
+            DatabaseInterface.CheckStudentTable();
+            DatabaseInterface.CheckStudentExerciseTable();
 
             List<Instructor> instructors = db.Query<Instructor>(@"SELECT * FROM Instructor").ToList();
             instructors.ForEach(i => Console.WriteLine($"{i.FirstName} {i.LastName}"));
@@ -123,7 +126,42 @@ namespace nss
                 Console.WriteLine($"{cohort.Value.Name} has {cohort.Value.Instructors.Count} instructors.");
             }
 
+            Dictionary<int, Cohort> studentsInCohort = new Dictionary<int, Cohort>();
 
+            db.Query<Cohort, Student, Cohort>(@"
+                SELECT
+                      c.Id,
+                       c.Name,
+                       s.Id,
+                       s.FirstName,
+                       s.LastName,
+                       s.CohortId,
+                       s.SlackHandle
+                       
+                       
+                FROM Cohort c
+                JOIN Student s ON s.Id = s.CohortId
+            ", (cohort, student) =>
+            {
+                // Does the Dictionary already have the key of the cohort Id?
+                if (!report.ContainsKey(cohort.Id))
+                {
+                    // Create the entry in the dictionary
+                    report[cohort.Id] = cohort;
+                }
+
+                // Add the instructor to the current cohort entry in Dictionary
+                report[cohort.Id].Students.Add(student);
+                return cohort;
+            });
+
+            /*
+                Iterate the key/value pairs in the dictionary
+             */
+            foreach (KeyValuePair<int, Cohort> cohort in report)
+            {
+                Console.WriteLine($"{cohort.Value.Name} has {cohort.Value.Students.Count} students.");
+            }
 
 
             /*
